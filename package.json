@@ -1,13 +1,21 @@
 {
-	"devDependencies": {
-		"@vitest/coverage-v8": "^3.2.4",
-		"typescript": "^5.9.2",
-		"vitest": "^3.2.4"
-	},
-	"scripts": {
-		"test": "vitest run",
-		"test:watch": "vitest",
-		"test:coverage": "vitest run --coverage",
-		"typecheck": "tsc --noEmit"
-	}
+  "name": "midi-ts",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.11.0",
+  "devDependencies": {
+    "@vitest/coverage-v8": "^3.2.4",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit"
+  }
 }

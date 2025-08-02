@@ -17,62 +17,62 @@ export type MidiEvent = ChannelEvent | MetaEvent | SysExEvent;
 
 export type ChannelEvent =
   | {
-      delta: number;
       type: "channel";
       subtype: "noteOff";
+      delta: number;
       channel: number;
       note: number;
       velocity: number;
     }
   | {
-      delta: number;
       type: "channel";
       subtype: "noteOn";
+      delta: number;
       channel: number;
       note: number;
       velocity: number;
     }
   | {
-      delta: number;
       type: "channel";
       subtype: "polyAftertouch";
+      delta: number;
       channel: number;
       note: number;
       pressure: number;
     }
   | {
-      delta: number;
       type: "channel";
       subtype: "controlChange";
+      delta: number;
       channel: number;
       controller: number;
       value: number;
     }
   | {
-      delta: number;
       type: "channel";
       subtype: "programChange";
+      delta: number;
       channel: number;
       program: number;
     }
   | {
-      delta: number;
       type: "channel";
       subtype: "channelPressure";
+      delta: number;
       channel: number;
       pressure: number;
     }
   | {
-      delta: number;
       type: "channel";
       subtype: "pitchBend";
+      delta: number;
       channel: number;
       value: number;
     }; // 14-bit signed center=0
 
 export interface MetaEvent {
-  delta: number;
   type: "meta";
+  delta: number;
   metaType: number;
   data: Uint8Array;
   // common conveniences (filled when applicable)
@@ -89,8 +89,8 @@ export interface MetaEvent {
 }
 
 export interface SysExEvent {
-  delta: number;
   type: "sysex";
+  delta: number;
   kind: 0xf0 | 0xf7;
   data: Uint8Array; // raw payload
 }

@@ -540,7 +540,7 @@ describe("Tempo Utilities Advanced Tests", () => {
       };
 
       const tempoMap = buildTempoMap(midi);
-      const ppq = midi.ticksPerQuarter!;
+      const ppq = midi.ticksPerQuarter ?? 480;
 
       // Verify tempo map structure
       expect(tempoMap).toHaveLength(4);

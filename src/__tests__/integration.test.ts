@@ -3,6 +3,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import {
   buildTempoMap,
   type ChannelEvent,
+  type MidiEvent,
   type MidiFile,
   parseMidi,
   ticksToMs,
@@ -50,8 +51,8 @@ describe("Integration Tests with Real MIDI File", () => {
       }
 
       if (hasSMPTE) {
-        expect(parsedMidi.smpte!.fps).toBeGreaterThan(0);
-        expect(parsedMidi.smpte!.ticksPerFrame).toBeGreaterThan(0);
+        expect(parsedMidi.smpte?.fps).toBeGreaterThan(0);
+        expect(parsedMidi.smpte?.ticksPerFrame).toBeGreaterThan(0);
       }
     });
 
@@ -73,15 +74,11 @@ describe("Integration Tests with Real MIDI File", () => {
 
   describe("Event Analysis", () => {
     it("should contain various event types", () => {
-      let hasChannelEvents = false;
       let hasMetaEvents = false;
-      let hasSysExEvents = false;
 
       for (const track of parsedMidi.tracks) {
         for (const event of track.events) {
-          if (event.type === "channel") hasChannelEvents = true;
           if (event.type === "meta") hasMetaEvents = true;
-          if (event.type === "sysex") hasSysExEvents = true;
         }
       }
 
@@ -305,7 +302,8 @@ describe("Integration Tests with Real MIDI File", () => {
 
   describe("Musical Analysis", () => {
     it("should extract a coherent musical timeline", () => {
-      const timeline: Array<{ tick: number; type: string; event: any }> = [];
+      const timeline: Array<{ tick: number; type: string; event: MidiEvent }> =
+        [];
 
       for (
         let trackIndex = 0;
@@ -398,7 +396,6 @@ describe("Integration Tests with Real MIDI File", () => {
       // If we have note events, validate they follow musical conventions
       if (noteEvents.length > 0) {
         // Check for reasonable note durations
-        const noteOns = noteEvents.filter((e) => e.action === "on");
         const noteOffs = noteEvents.filter((e) => e.action === "off");
 
         // In a well-formed MIDI file, we should have some note off events
@@ -420,14 +417,15 @@ describe("Integration Tests with Real MIDI File", () => {
             });
           }
 
-          const stats = channelStats.get(noteEvent.channel)!;
+          const stats = channelStats.get(noteEvent.channel);
+          if (!stats) continue;
           stats.minNote = Math.min(stats.minNote, noteEvent.note);
           stats.maxNote = Math.max(stats.maxNote, noteEvent.note);
           stats.count++;
         }
 
         // Validate each channel has reasonable note ranges
-        for (const [channel, stats] of channelStats) {
+        for (const [, stats] of channelStats) {
           expect(stats.minNote).toBeGreaterThanOrEqual(0);
           expect(stats.maxNote).toBeLessThanOrEqual(127);
           expect(stats.maxNote).toBeGreaterThanOrEqual(stats.minNote);

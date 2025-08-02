@@ -2,6 +2,8 @@
  * Test utilities for MIDI parser tests
  */
 
+import type { MidiFile } from "../midi";
+
 /**
  * Creates a minimal valid MIDI file with specified parameters
  */
@@ -210,7 +212,7 @@ export function createKeySignatureEvent(
  * Validates that a parsed MIDI file has the expected structure
  */
 export function validateMidiStructure(
-  midi: any,
+  midi: MidiFile,
   expectedFormat: number,
   expectedTrackCount: number,
 ): void {
@@ -232,7 +234,7 @@ export function validateMidiStructure(
 /**
  * Extracts all note events from a parsed MIDI file
  */
-export function extractNoteEvents(midi: any): Array<{
+export function extractNoteEvents(midi: MidiFile): Array<{
   track: number;
   absoluteTick: number;
   type: "noteOn" | "noteOff";
@@ -240,7 +242,14 @@ export function extractNoteEvents(midi: any): Array<{
   note: number;
   velocity: number;
 }> {
-  const noteEvents: any[] = [];
+  const noteEvents: Array<{
+    track: number;
+    absoluteTick: number;
+    type: "noteOn" | "noteOff";
+    channel: number;
+    note: number;
+    velocity: number;
+  }> = [];
 
   for (let trackIndex = 0; trackIndex < midi.tracks.length; trackIndex++) {
     let absoluteTick = 0;

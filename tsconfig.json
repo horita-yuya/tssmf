@@ -5,7 +5,7 @@
     "lib": ["ES2020"],
     "module": "ESNext",
     "moduleResolution": "bundler",
-    
+
     // Emit
     "outDir": "./dist",
     "rootDir": "./src",
@@ -15,13 +15,13 @@
     "removeComments": false,
     "emitDecoratorMetadata": false,
     "experimentalDecorators": false,
-    
+
     // Interop Constraints
     "isolatedModules": true,
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-    
+
     // Type Checking (Strict Mode)
     "strict": true,
     "noImplicitAny": true,
@@ -40,18 +40,11 @@
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
     "noPropertyAccessFromIndexSignature": true,
-    
+
     // Completeness
     "skipLibCheck": true,
     "skipDefaultLibCheck": true
   },
-  "include": [
-    "src/**/*"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "**/*.test.ts",
-    "**/*.spec.ts"
-  ]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts"]
 }

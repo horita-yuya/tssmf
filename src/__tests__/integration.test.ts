@@ -1,8 +1,14 @@
-import { describe, it, expect, beforeAll } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { parseMidi, buildTempoMap, ticksToMs, type MidiFile, type ChannelEvent } from '../midi';
+import { readFileSync } from "node:fs";
+import { beforeAll, describe, expect, it } from "vitest";
+import {
+  buildTempoMap,
+  type ChannelEvent,
+  type MidiFile,
+  parseMidi,
+  ticksToMs,
+} from "../midi";
 
-describe('Integration Tests with Real MIDI File', () => {
+describe("Integration Tests with Real MIDI File", () => {
   let testMidiBuffer: ArrayBuffer;
   let parsedMidi: MidiFile;
 
@@ -22,16 +28,16 @@ describe('Integration Tests with Real MIDI File', () => {
     parsedMidi = parseMidi(testMidiBuffer);
   });
 
-  describe('File Structure Validation', () => {
-    it('should have valid MIDI format', () => {
+  describe("File Structure Validation", () => {
+    it("should have valid MIDI format", () => {
       expect([0, 1, 2]).toContain(parsedMidi.format);
     });
 
-    it('should have at least one track', () => {
+    it("should have at least one track", () => {
       expect(parsedMidi.tracks.length).toBeGreaterThan(0);
     });
 
-    it('should have valid timing division', () => {
+    it("should have valid timing division", () => {
       // Should have either PPQ or SMPTE, but not both
       const hasPPQ = parsedMidi.ticksPerQuarter !== undefined;
       const hasSMPTE = parsedMidi.smpte !== undefined;
@@ -49,33 +55,33 @@ describe('Integration Tests with Real MIDI File', () => {
       }
     });
 
-    it('should have properly terminated tracks', () => {
+    it("should have properly terminated tracks", () => {
       for (let i = 0; i < parsedMidi.tracks.length; i++) {
         const track = parsedMidi.tracks[i];
         expect(track.events.length).toBeGreaterThan(0);
 
         // Last event should be End of Track
         const lastEvent = track.events[track.events.length - 1];
-        expect(lastEvent.type).toBe('meta');
-        if (lastEvent.type === 'meta') {
-          expect(lastEvent.metaType).toBe(0x2F);
+        expect(lastEvent.type).toBe("meta");
+        if (lastEvent.type === "meta") {
+          expect(lastEvent.metaType).toBe(0x2f);
           expect(lastEvent.endOfTrack).toBe(true);
         }
       }
     });
   });
 
-  describe('Event Analysis', () => {
-    it('should contain various event types', () => {
+  describe("Event Analysis", () => {
+    it("should contain various event types", () => {
       let hasChannelEvents = false;
       let hasMetaEvents = false;
       let hasSysExEvents = false;
 
       for (const track of parsedMidi.tracks) {
         for (const event of track.events) {
-          if (event.type === 'channel') hasChannelEvents = true;
-          if (event.type === 'meta') hasMetaEvents = true;
-          if (event.type === 'sysex') hasSysExEvents = true;
+          if (event.type === "channel") hasChannelEvents = true;
+          if (event.type === "meta") hasMetaEvents = true;
+          if (event.type === "sysex") hasSysExEvents = true;
         }
       }
 
@@ -83,10 +89,10 @@ describe('Integration Tests with Real MIDI File', () => {
       // Channel events and SysEx are optional but we expect channel events in a typical MIDI file
     });
 
-    it('should have valid channel event data', () => {
+    it("should have valid channel event data", () => {
       for (const track of parsedMidi.tracks) {
         for (const event of track.events) {
-          if (event.type === 'channel') {
+          if (event.type === "channel") {
             const channelEvent = event as ChannelEvent;
 
             // Channel should be 0-15
@@ -95,39 +101,39 @@ describe('Integration Tests with Real MIDI File', () => {
 
             // Validate event-specific data
             switch (channelEvent.subtype) {
-              case 'noteOn':
-              case 'noteOff':
+              case "noteOn":
+              case "noteOff":
                 expect(channelEvent.note).toBeGreaterThanOrEqual(0);
                 expect(channelEvent.note).toBeLessThanOrEqual(127);
                 expect(channelEvent.velocity).toBeGreaterThanOrEqual(0);
                 expect(channelEvent.velocity).toBeLessThanOrEqual(127);
                 break;
 
-              case 'polyAftertouch':
+              case "polyAftertouch":
                 expect(channelEvent.note).toBeGreaterThanOrEqual(0);
                 expect(channelEvent.note).toBeLessThanOrEqual(127);
                 expect(channelEvent.pressure).toBeGreaterThanOrEqual(0);
                 expect(channelEvent.pressure).toBeLessThanOrEqual(127);
                 break;
 
-              case 'controlChange':
+              case "controlChange":
                 expect(channelEvent.controller).toBeGreaterThanOrEqual(0);
                 expect(channelEvent.controller).toBeLessThanOrEqual(127);
                 expect(channelEvent.value).toBeGreaterThanOrEqual(0);
                 expect(channelEvent.value).toBeLessThanOrEqual(127);
                 break;
 
-              case 'programChange':
+              case "programChange":
                 expect(channelEvent.program).toBeGreaterThanOrEqual(0);
                 expect(channelEvent.program).toBeLessThanOrEqual(127);
                 break;
 
-              case 'channelPressure':
+              case "channelPressure":
                 expect(channelEvent.pressure).toBeGreaterThanOrEqual(0);
                 expect(channelEvent.pressure).toBeLessThanOrEqual(127);
                 break;
 
-              case 'pitchBend':
+              case "pitchBend":
                 expect(channelEvent.value).toBeGreaterThanOrEqual(-8192);
                 expect(channelEvent.value).toBeLessThanOrEqual(8191);
                 break;
@@ -137,7 +143,7 @@ describe('Integration Tests with Real MIDI File', () => {
       }
     });
 
-    it('should have valid delta times', () => {
+    it("should have valid delta times", () => {
       for (const track of parsedMidi.tracks) {
         for (const event of track.events) {
           expect(event.delta).toBeGreaterThanOrEqual(0);
@@ -146,7 +152,7 @@ describe('Integration Tests with Real MIDI File', () => {
       }
     });
 
-    it('should maintain event ordering within tracks', () => {
+    it("should maintain event ordering within tracks", () => {
       for (const track of parsedMidi.tracks) {
         let absoluteTick = 0;
 
@@ -158,8 +164,8 @@ describe('Integration Tests with Real MIDI File', () => {
     });
   });
 
-  describe('Music Data Analysis', () => {
-    it('should extract note events correctly', () => {
+  describe("Music Data Analysis", () => {
+    it("should extract note events correctly", () => {
       const noteEvents: Array<{ tick: number; event: ChannelEvent }> = [];
 
       for (const track of parsedMidi.tracks) {
@@ -168,8 +174,10 @@ describe('Integration Tests with Real MIDI File', () => {
         for (const event of track.events) {
           absoluteTick += event.delta;
 
-          if (event.type === 'channel' &&
-              (event.subtype === 'noteOn' || event.subtype === 'noteOff')) {
+          if (
+            event.type === "channel" &&
+            (event.subtype === "noteOn" || event.subtype === "noteOff")
+          ) {
             noteEvents.push({ tick: absoluteTick, event });
           }
         }
@@ -185,7 +193,7 @@ describe('Integration Tests with Real MIDI File', () => {
         }
 
         // Check for reasonable note range (most MIDI uses notes 21-108)
-        const notes = noteEvents.map(n => n.event.note);
+        const notes = noteEvents.map((n) => n.event.note);
         const minNote = Math.min(...notes);
         const maxNote = Math.max(...notes);
 
@@ -194,12 +202,12 @@ describe('Integration Tests with Real MIDI File', () => {
       }
     });
 
-    it('should find text/name information if present', () => {
+    it("should find text/name information if present", () => {
       const textEvents: string[] = [];
 
       for (const track of parsedMidi.tracks) {
         for (const event of track.events) {
-          if (event.type === 'meta' && event.text) {
+          if (event.type === "meta" && event.text) {
             textEvents.push(event.text);
           }
         }
@@ -207,12 +215,12 @@ describe('Integration Tests with Real MIDI File', () => {
 
       // Text events are optional, but if present, should be non-empty strings
       for (const text of textEvents) {
-        expect(typeof text).toBe('string');
+        expect(typeof text).toBe("string");
         expect(text.length).toBeGreaterThan(0);
       }
     });
 
-    it('should handle tempo information correctly', () => {
+    it("should handle tempo information correctly", () => {
       const tempoMap = buildTempoMap(parsedMidi);
 
       expect(tempoMap.length).toBeGreaterThan(0);
@@ -221,7 +229,7 @@ describe('Integration Tests with Real MIDI File', () => {
 
       // Verify tempo map is sorted by tick
       for (let i = 1; i < tempoMap.length; i++) {
-        expect(tempoMap[i].tick).toBeGreaterThanOrEqual(tempoMap[i-1].tick);
+        expect(tempoMap[i].tick).toBeGreaterThanOrEqual(tempoMap[i - 1].tick);
       }
 
       // Test tempo utilities work with this file
@@ -240,8 +248,8 @@ describe('Integration Tests with Real MIDI File', () => {
     });
   });
 
-  describe('Performance and Robustness', () => {
-    it('should parse quickly', () => {
+  describe("Performance and Robustness", () => {
+    it("should parse quickly", () => {
       const startTime = performance.now();
 
       for (let i = 0; i < 10; i++) {
@@ -255,7 +263,7 @@ describe('Integration Tests with Real MIDI File', () => {
       expect(avgTime).toBeLessThan(10);
     });
 
-    it('should produce consistent results on repeated parsing', () => {
+    it("should produce consistent results on repeated parsing", () => {
       const result1 = parseMidi(testMidiBuffer);
       const result2 = parseMidi(testMidiBuffer);
 
@@ -265,7 +273,9 @@ describe('Integration Tests with Real MIDI File', () => {
 
       // Compare track contents
       for (let i = 0; i < result1.tracks.length; i++) {
-        expect(result1.tracks[i].events.length).toBe(result2.tracks[i].events.length);
+        expect(result1.tracks[i].events.length).toBe(
+          result2.tracks[i].events.length,
+        );
 
         for (let j = 0; j < result1.tracks[i].events.length; j++) {
           const event1 = result1.tracks[i].events[j];
@@ -277,23 +287,31 @@ describe('Integration Tests with Real MIDI File', () => {
       }
     });
 
-    it('should handle ArrayBuffer and Uint8Array inputs consistently', () => {
+    it("should handle ArrayBuffer and Uint8Array inputs consistently", () => {
       const uint8Array = new Uint8Array(testMidiBuffer);
 
       const resultFromArrayBuffer = parseMidi(testMidiBuffer);
       const resultFromUint8Array = parseMidi(uint8Array);
 
       expect(resultFromArrayBuffer.format).toBe(resultFromUint8Array.format);
-      expect(resultFromArrayBuffer.tracks.length).toBe(resultFromUint8Array.tracks.length);
-      expect(resultFromArrayBuffer.ticksPerQuarter).toBe(resultFromUint8Array.ticksPerQuarter);
+      expect(resultFromArrayBuffer.tracks.length).toBe(
+        resultFromUint8Array.tracks.length,
+      );
+      expect(resultFromArrayBuffer.ticksPerQuarter).toBe(
+        resultFromUint8Array.ticksPerQuarter,
+      );
     });
   });
 
-  describe('Musical Analysis', () => {
-    it('should extract a coherent musical timeline', () => {
+  describe("Musical Analysis", () => {
+    it("should extract a coherent musical timeline", () => {
       const timeline: Array<{ tick: number; type: string; event: any }> = [];
 
-      for (let trackIndex = 0; trackIndex < parsedMidi.tracks.length; trackIndex++) {
+      for (
+        let trackIndex = 0;
+        trackIndex < parsedMidi.tracks.length;
+        trackIndex++
+      ) {
         const track = parsedMidi.tracks[trackIndex];
         let absoluteTick = 0;
 
@@ -302,7 +320,7 @@ describe('Integration Tests with Real MIDI File', () => {
           timeline.push({
             tick: absoluteTick,
             type: event.type,
-            event: event
+            event: event,
           });
         }
       }
@@ -315,20 +333,30 @@ describe('Integration Tests with Real MIDI File', () => {
       expect(timeline[0].tick).toBeGreaterThanOrEqual(0);
 
       // Check for reasonable event distribution
-      const eventTypes = new Set(timeline.map(t => t.type));
-      expect(eventTypes.has('meta')).toBe(true); // Should have at least meta events
+      const eventTypes = new Set(timeline.map((t) => t.type));
+      expect(eventTypes.has("meta")).toBe(true); // Should have at least meta events
 
       // Find the last event - should be End of Track
-      const lastEvents = timeline.filter(t => t.tick === Math.max(...timeline.map(e => e.tick)));
-      const hasEndOfTrack = lastEvents.some(e =>
-        e.type === 'meta' && e.event.metaType === 0x2F
+      const lastEvents = timeline.filter(
+        (t) => t.tick === Math.max(...timeline.map((e) => e.tick)),
+      );
+      const hasEndOfTrack = lastEvents.some(
+        (e) => e.type === "meta" && e.event.metaType === 0x2f,
       );
       expect(hasEndOfTrack).toBe(true);
     });
 
-    it('should handle polyphonic note patterns if present', () => {
-      const activeNotes = new Map<string, { tick: number; channel: number; velocity: number }>();
-      const noteEvents: Array<{ tick: number; action: string; note: number; channel: number }> = [];
+    it("should handle polyphonic note patterns if present", () => {
+      const activeNotes = new Map<
+        string,
+        { tick: number; channel: number; velocity: number }
+      >();
+      const noteEvents: Array<{
+        tick: number;
+        action: string;
+        note: number;
+        channel: number;
+      }> = [];
 
       for (const track of parsedMidi.tracks) {
         let absoluteTick = 0;
@@ -336,29 +364,31 @@ describe('Integration Tests with Real MIDI File', () => {
         for (const event of track.events) {
           absoluteTick += event.delta;
 
-          if (event.type === 'channel') {
-            if (event.subtype === 'noteOn' && event.velocity > 0) {
+          if (event.type === "channel") {
+            if (event.subtype === "noteOn" && event.velocity > 0) {
               const key = `${event.channel}-${event.note}`;
               activeNotes.set(key, {
                 tick: absoluteTick,
                 channel: event.channel,
-                velocity: event.velocity
+                velocity: event.velocity,
               });
               noteEvents.push({
                 tick: absoluteTick,
-                action: 'on',
+                action: "on",
                 note: event.note,
-                channel: event.channel
+                channel: event.channel,
               });
-            } else if (event.subtype === 'noteOff' ||
-                      (event.subtype === 'noteOn' && event.velocity === 0)) {
+            } else if (
+              event.subtype === "noteOff" ||
+              (event.subtype === "noteOn" && event.velocity === 0)
+            ) {
               const key = `${event.channel}-${event.note}`;
               activeNotes.delete(key);
               noteEvents.push({
                 tick: absoluteTick,
-                action: 'off',
+                action: "off",
                 note: event.note,
-                channel: event.channel
+                channel: event.channel,
               });
             }
           }
@@ -368,22 +398,25 @@ describe('Integration Tests with Real MIDI File', () => {
       // If we have note events, validate they follow musical conventions
       if (noteEvents.length > 0) {
         // Check for reasonable note durations
-        const noteOns = noteEvents.filter(e => e.action === 'on');
-        const noteOffs = noteEvents.filter(e => e.action === 'off');
+        const noteOns = noteEvents.filter((e) => e.action === "on");
+        const noteOffs = noteEvents.filter((e) => e.action === "off");
 
         // In a well-formed MIDI file, we should have some note off events
         // (though not necessarily equal numbers due to sustain, overlaps, etc.)
         expect(noteOffs.length).toBeGreaterThan(0);
 
         // Check for reasonable note ranges per channel
-        const channelStats = new Map<number, { minNote: number; maxNote: number; count: number }>();
+        const channelStats = new Map<
+          number,
+          { minNote: number; maxNote: number; count: number }
+        >();
 
         for (const noteEvent of noteEvents) {
           if (!channelStats.has(noteEvent.channel)) {
             channelStats.set(noteEvent.channel, {
               minNote: noteEvent.note,
               maxNote: noteEvent.note,
-              count: 0
+              count: 0,
             });
           }
 

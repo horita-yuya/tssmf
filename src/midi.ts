@@ -241,7 +241,7 @@ export interface ParseOptions {
 }
 
 class MidiParseError extends Error {
-  constructor(message: string, public offset: number) {
+  constructor(message: string, offset: number) {
     super(`${message} (at 0x${offset.toString(16)})`);
   }
 }
@@ -265,7 +265,10 @@ class MidiParser {
     this.opts = {
       normalizeZeroVelocityNoteOn: options.normalizeZeroVelocityNoteOn ?? true,
       tempoSource: options.tempoSource ?? "track0",
-      textDecoders: options.textDecoders ?? [new TextDecoder("latin1"), new TextDecoder("utf-8")],
+      textDecoders: options.textDecoders ?? [
+        new TextDecoder("latin1"),
+        new TextDecoder("utf-8"),
+      ],
     };
     this.textDecoders = this.opts.textDecoders;
   }
@@ -281,9 +284,7 @@ class MidiParser {
     for (const dec of this.textDecoders) {
       try {
         return dec.decode(bytes);
-      } catch {
-        continue;
-      }
+      } catch {}
     }
     // Fallback to latin1
     let s = "";
@@ -467,10 +468,11 @@ class MidiParser {
           velocity: this.readUint8(),
         };
 
-      case 0x9: { // Note On
+      case 0x9: {
+        // Note On
         const note = this.readUint8();
         const velocity = this.readUint8();
-        
+
         if (this.opts.normalizeZeroVelocityNoteOn && velocity === 0) {
           return {
             delta,
@@ -481,7 +483,7 @@ class MidiParser {
             velocity: 64,
           };
         }
-        
+
         return {
           delta,
           type: "channel",

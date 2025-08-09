@@ -21,7 +21,7 @@ This is a zero-dependency TypeScript library for parsing MIDI files. The library
 ## Architecture
 
 ### Core Module Structure
-The library consists of a single main module (`src/midi.ts`) that exports:
+The library consists of a single main module (`src/index.ts`) that exports:
 - **parseMidi()** - Main parsing function that takes ArrayBuffer/Uint8Array and returns MidiFile
 - **buildTempoMap()** - Builds tempo map from parsed MIDI for timing calculations
 - **ticksToMs()** - Converts MIDI ticks to milliseconds using tempo map

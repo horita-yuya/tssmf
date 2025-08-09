@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseMidi } from "../midi";
+import { parseMidi } from "../index";
 
 describe("Variable Length Quantity (VLQ) Edge Cases", () => {
   const createMidiWithVLQ = (

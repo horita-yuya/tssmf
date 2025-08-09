@@ -7,7 +7,7 @@ import {
   parseMidi,
   type SysExEvent,
   ticksToMs,
-} from "../midi";
+} from "../index";
 import { createTestMidiWithNotes } from "./test-utils";
 
 describe("MIDI Parser", () => {

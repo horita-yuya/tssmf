@@ -2,7 +2,7 @@
  * Test utilities for MIDI parser tests
  */
 
-import type { MidiFile } from "../midi";
+import type { MidiFile } from "../index";
 
 /**
  * Creates a minimal valid MIDI file with specified parameters

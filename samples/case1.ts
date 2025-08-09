@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import * as path from "node:path";
-import { parseMidi } from "../src/midi.ts"; // ← TSを直接実行するなら拡張子必須
+import { parseMidi } from "../src/index.ts";
 
 // __dirname を自前で定義（ESM流儀）
 const __filename = fileURLToPath(import.meta.url);

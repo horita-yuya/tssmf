@@ -7,7 +7,7 @@ import {
   type MidiFile,
   parseMidi,
   ticksToMs,
-} from "../midi";
+} from "../index";
 
 describe("Integration Tests with Real MIDI File", () => {
   let testMidiBuffer: ArrayBuffer;

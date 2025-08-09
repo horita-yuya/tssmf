@@ -4,7 +4,7 @@ import {
   type MidiFile,
   type TempoPoint,
   ticksToMs,
-} from "../midi";
+} from "../index";
 
 describe("Tempo Utilities Advanced Tests", () => {
   describe("buildTempoMap", () => {

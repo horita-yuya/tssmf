@@ -1929,8 +1929,8 @@ describe("MIDI Parser", () => {
       const event = midi.tracks[0].events[0] as ChannelEvent;
 
       expect(event.type).toBe("channel");
-      expect(event.subtype).toBe("noteOn");
-      expect(event.velocity).toBe(0);
+      expect(event.subtype).toBe("noteOff");
+      expect(event.velocity).toBe(64);
     });
 
     it("should handle very large VLQ values", () => {

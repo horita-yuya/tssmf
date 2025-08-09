@@ -1,6 +1,138 @@
 // midi.ts — zero-dep, ECMAScript-only MIDI parser (TypeScript)
 
+/// <reference lib="dom" />
+
 export type MidiFormat = 0 | 1 | 2;
+
+type MidiNoteNumber =
+  | 0
+  | 1
+  | 2
+  | 3
+  | 4
+  | 5
+  | 6
+  | 7
+  | 8
+  | 9
+  | 10
+  | 11
+  | 12
+  | 13
+  | 14
+  | 15
+  | 16
+  | 17
+  | 18
+  | 19
+  | 20
+  | 21
+  | 22
+  | 23
+  | 24
+  | 25
+  | 26
+  | 27
+  | 28
+  | 29
+  | 30
+  | 31
+  | 32
+  | 33
+  | 34
+  | 35
+  | 36
+  | 37
+  | 38
+  | 39
+  | 40
+  | 41
+  | 42
+  | 43
+  | 44
+  | 45
+  | 46
+  | 47
+  | 48
+  | 49
+  | 50
+  | 51
+  | 52
+  | 53
+  | 54
+  | 55
+  | 56
+  | 57
+  | 58
+  | 59
+  | 60
+  | 61
+  | 62
+  | 63
+  | 64
+  | 65
+  | 66
+  | 67
+  | 68
+  | 69
+  | 70
+  | 71
+  | 72
+  | 73
+  | 74
+  | 75
+  | 76
+  | 77
+  | 78
+  | 79
+  | 80
+  | 81
+  | 82
+  | 83
+  | 84
+  | 85
+  | 86
+  | 87
+  | 88
+  | 89
+  | 90
+  | 91
+  | 92
+  | 93
+  | 94
+  | 95
+  | 96
+  | 97
+  | 98
+  | 99
+  | 100
+  | 101
+  | 102
+  | 103
+  | 104
+  | 105
+  | 106
+  | 107
+  | 108
+  | 109
+  | 110
+  | 111
+  | 112
+  | 113
+  | 114
+  | 115
+  | 116
+  | 117
+  | 118
+  | 119
+  | 120
+  | 121
+  | 122
+  | 123
+  | 124
+  | 125
+  | 126
+  | 127;
 
 export interface MidiFile {
   format: MidiFormat;
@@ -21,7 +153,7 @@ export type ChannelEvent =
       subtype: "noteOff";
       delta: number;
       channel: number;
-      note: number;
+      note: MidiNoteNumber;
       velocity: number;
     }
   | {
@@ -29,7 +161,7 @@ export type ChannelEvent =
       subtype: "noteOn";
       delta: number;
       channel: number;
-      note: number;
+      note: MidiNoteNumber;
       velocity: number;
     }
   | {
@@ -37,7 +169,7 @@ export type ChannelEvent =
       subtype: "polyAftertouch";
       delta: number;
       channel: number;
-      note: number;
+      note: MidiNoteNumber;
       pressure: number;
     }
   | {
@@ -100,11 +232,27 @@ export interface TempoPoint {
   usPerQuarter: number;
 }
 
+export type TempoSource = "all" | "track0" | "merge";
+
+export interface ParseOptions {
+  normalizeZeroVelocityNoteOn?: boolean;
+  tempoSource?: TempoSource;
+  textDecoders?: TextDecoder[];
+}
+
+class MidiParseError extends Error {
+  constructor(message: string, public offset: number) {
+    super(`${message} (at 0x${offset.toString(16)})`);
+  }
+}
+
 class MidiParser {
   private view: DataView;
   private offset: number = 0;
+  private readonly opts: Required<ParseOptions>;
+  private readonly textDecoders: TextDecoder[];
 
-  constructor(buffer: ArrayBuffer | Uint8Array) {
+  constructor(buffer: ArrayBuffer | Uint8Array, options: ParseOptions = {}) {
     if (buffer instanceof Uint8Array) {
       this.view = new DataView(
         buffer.buffer,
@@ -114,27 +262,65 @@ class MidiParser {
     } else {
       this.view = new DataView(buffer);
     }
+    this.opts = {
+      normalizeZeroVelocityNoteOn: options.normalizeZeroVelocityNoteOn ?? true,
+      tempoSource: options.tempoSource ?? "track0",
+      textDecoders: options.textDecoders ?? [new TextDecoder("latin1"), new TextDecoder("utf-8")],
+    };
+    this.textDecoders = this.opts.textDecoders;
   }
 
-  private readUint8(): number {
+  private ensureAvailable(n: number) {
+    const remaining = this.view.byteLength - this.offset;
+    if (n > remaining) {
+      throw new MidiParseError(`Unexpected EOF: need ${n} bytes`, this.offset);
+    }
+  }
+
+  private decodeText(bytes: Uint8Array): string {
+    for (const dec of this.textDecoders) {
+      try {
+        return dec.decode(bytes);
+      } catch {
+        continue;
+      }
+    }
+    // Fallback to latin1
+    let s = "";
+    for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]!);
+    return s;
+  }
+
+  private readFourCC(): string {
+    const bytes = this.readBytes(4);
+    let s = "";
+    for (let i = 0; i < 4; i++) s += String.fromCharCode(bytes[i]!);
+    return s;
+  }
+
+  private readUint8(): MidiNoteNumber {
+    this.ensureAvailable(1);
     const value = this.view.getUint8(this.offset);
     this.offset += 1;
-    return value;
+    return value as MidiNoteNumber;
   }
 
   private readUint16(): number {
+    this.ensureAvailable(2);
     const value = this.view.getUint16(this.offset, false); // big-endian
     this.offset += 2;
     return value;
   }
 
   private readUint32(): number {
+    this.ensureAvailable(4);
     const value = this.view.getUint32(this.offset, false); // big-endian
     this.offset += 4;
     return value;
   }
 
   private readBytes(length: number): Uint8Array {
+    this.ensureAvailable(length);
     const bytes = new Uint8Array(
       this.view.buffer,
       this.view.byteOffset + this.offset,
@@ -145,20 +331,21 @@ class MidiParser {
   }
 
   private readString(length: number): string {
+    if (length === 4) {
+      return this.readFourCC();
+    }
     const bytes = this.readBytes(length);
     return String.fromCharCode(...bytes);
   }
 
   private readVariableLengthQuantity(): number {
     let value = 0;
-    let byte: number;
-
-    do {
-      byte = this.readUint8();
+    for (let i = 0; i < 4; i++) {
+      const byte = this.readUint8();
       value = (value << 7) | (byte & 0x7f);
-    } while (byte & 0x80);
-
-    return value;
+      if ((byte & 0x80) === 0) return value;
+    }
+    throw new MidiParseError("VLQ too long (over 4 bytes)", this.offset);
   }
 
   private parseHeader(): {
@@ -206,6 +393,7 @@ class MidiParser {
 
     const events: MidiEvent[] = [];
     let runningStatus: number | null = null;
+    let pendingSysEx: Uint8Array | null = null;
 
     while (this.offset < trackEnd) {
       // Read delta time
@@ -228,11 +416,19 @@ class MidiParser {
         }
       }
 
-      const event = this.parseEvent(delta, statusByte);
-      events.push(event);
+      const ev = this.parseEvent(delta, statusByte, pendingSysEx);
+      events.push(ev);
+
+      // Handle SysEx continuation state
+      if (ev.type === "sysex") {
+        pendingSysEx = (ev as any).__pendingSyx ?? null;
+        delete (ev as any).__pendingSyx;
+      } else {
+        pendingSysEx = null;
+      }
 
       // End of track event terminates parsing
-      if (event.type === "meta" && event.metaType === 0x2f) {
+      if (ev.type === "meta" && ev.metaType === 0x2f) {
         break;
       }
     }
@@ -240,16 +436,17 @@ class MidiParser {
     return { events };
   }
 
-  private parseEvent(delta: number, statusByte: number): MidiEvent {
+  private parseEvent(
+    delta: number,
+    statusByte: number,
+    pendingSysEx: Uint8Array | null,
+  ): MidiEvent {
     if (statusByte >= 0x80 && statusByte <= 0xef) {
-      // Channel event
       return this.parseChannelEvent(delta, statusByte);
     } else if (statusByte === 0xff) {
-      // Meta event
       return this.parseMetaEvent(delta);
     } else if (statusByte === 0xf0 || statusByte === 0xf7) {
-      // SysEx event
-      return this.parseSysExEvent(delta, statusByte);
+      return this.parseSysExEvent(delta, statusByte, pendingSysEx);
     } else {
       throw new Error(`Unsupported event status: 0x${statusByte.toString(16)}`);
     }
@@ -270,15 +467,30 @@ class MidiParser {
           velocity: this.readUint8(),
         };
 
-      case 0x9: // Note On
+      case 0x9: { // Note On
+        const note = this.readUint8();
+        const velocity = this.readUint8();
+        
+        if (this.opts.normalizeZeroVelocityNoteOn && velocity === 0) {
+          return {
+            delta,
+            type: "channel",
+            subtype: "noteOff",
+            channel,
+            note: note as MidiNoteNumber,
+            velocity: 64,
+          };
+        }
+        
         return {
           delta,
           type: "channel",
           subtype: "noteOn",
           channel,
-          note: this.readUint8(),
-          velocity: this.readUint8(),
+          note,
+          velocity,
         };
+      }
 
       case 0xa: // Polyphonic Key Pressure
         return {
@@ -354,25 +566,24 @@ class MidiParser {
     // Add convenience fields for common meta events
     if (metaType >= 0x01 && metaType <= 0x07) {
       // Text events
-      const decoder = new TextDecoder("latin1");
-      event.text = decoder.decode(data);
+      event.text = this.decodeText(data);
     } else if (metaType === 0x51 && length === 3) {
       // Set Tempo
-      event.tempoUsPerQuarter = (data[0] << 16) | (data[1] << 8) | data[2];
+      event.tempoUsPerQuarter = (data[0]! << 16) | (data[1]! << 8) | data[2]!;
     } else if (metaType === 0x58 && length === 4) {
       // Time Signature
       event.timeSig = {
-        num: data[0],
-        den: 2 ** data[1],
-        metronome: data[2],
-        thirtyseconds: data[3],
+        num: data[0]!,
+        den: 1 << data[1]!,
+        metronome: data[2]!,
+        thirtyseconds: data[3]!,
       };
     } else if (metaType === 0x59 && length === 2) {
       // Key Signature
-      const sf = data[0] > 127 ? data[0] - 256 : data[0]; // Convert to signed byte
+      const sf = data[0]! > 127 ? data[0]! - 256 : data[0]!; // Convert to signed byte
       event.keySig = {
         sf,
-        minor: data[1] === 1,
+        minor: data[1]! === 1,
       };
     } else if (metaType === 0x2f) {
       // End of Track
@@ -382,16 +593,42 @@ class MidiParser {
     return event;
   }
 
-  private parseSysExEvent(delta: number, statusByte: number): SysExEvent {
+  private parseSysExEvent(
+    delta: number,
+    statusByte: number,
+    pending: Uint8Array | null,
+  ): SysExEvent {
     const length = this.readVariableLengthQuantity();
-    const data = this.readBytes(length);
+    const payload = this.readBytes(length);
 
-    return {
+    let combined = payload;
+    let nextPending: Uint8Array | null = null;
+
+    if (statusByte === 0xf0) {
+      // New SysEx start
+      combined = payload;
+      nextPending = payload;
+    } else if (statusByte === 0xf7) {
+      // Continuation or escape
+      if (pending) {
+        const merged = new Uint8Array(pending.length + payload.length);
+        merged.set(pending, 0);
+        merged.set(payload, pending.length);
+        combined = merged;
+      } else {
+        combined = payload;
+      }
+      nextPending = combined;
+    }
+
+    const ev: SysExEvent = {
       delta,
       type: "sysex",
       kind: statusByte as 0xf0 | 0xf7,
-      data,
+      data: combined,
     };
+    (ev as any).__pendingSyx = nextPending;
+    return ev;
   }
 
   parse(): MidiFile {
@@ -436,105 +673,115 @@ class MidiParser {
   }
 }
 
-export function parseMidi(input: ArrayBuffer | Uint8Array): MidiFile {
-  const parser = new MidiParser(input);
+export function parseMidi(
+  input: ArrayBuffer | Uint8Array,
+  opts: ParseOptions = {},
+): MidiFile {
+  const parser = new MidiParser(input, opts);
   return parser.parse();
 }
 
-export function buildTempoMap(midi: MidiFile): TempoPoint[] {
-  const tempoMap: TempoPoint[] = [];
-  let hasInitialTempo = false;
+export function buildTempoMap(
+  midi: MidiFile,
+  source: TempoSource = "all",
+): TempoPoint[] {
+  const points: TempoPoint[] = [];
 
-  // Scan all tracks for tempo change events
-  for (const track of midi.tracks) {
-    let absoluteTick = 0;
-
-    for (const event of track.events) {
-      absoluteTick += event.delta;
-
-      if (
-        event.type === "meta" &&
-        event.metaType === 0x51 &&
-        event.tempoUsPerQuarter !== undefined
-      ) {
-        const currentTempo = event.tempoUsPerQuarter;
-
-        // Find insertion point to maintain sorted order
-        let insertIndex = tempoMap.length;
-        for (let i = 0; i < tempoMap.length; i++) {
-          const tempoPoint = tempoMap[i];
-          if (tempoPoint && tempoPoint.tick > absoluteTick) {
-            insertIndex = i;
-            break;
-          } else if (tempoPoint && tempoPoint.tick === absoluteTick) {
-            // Update existing tempo point
-            tempoPoint.usPerQuarter = currentTempo;
-            insertIndex = -1;
-            break;
-          }
-        }
-
-        if (insertIndex >= 0) {
-          tempoMap.splice(insertIndex, 0, {
-            tick: absoluteTick,
-            usPerQuarter: currentTempo,
-          });
-          if (absoluteTick === 0) {
-            hasInitialTempo = true;
-          }
-        }
+  const pushFromTrack = (track: MidiTrack) => {
+    let abs = 0;
+    for (const ev of track.events) {
+      abs += ev.delta;
+      if (ev.type === "meta" && ev.metaType === 0x51 && ev.tempoUsPerQuarter) {
+        points.push({ tick: abs, usPerQuarter: ev.tempoUsPerQuarter });
       }
+    }
+  };
+
+  if (midi.format === 1) {
+    if (source === "track0") {
+      if (midi.tracks[0]) pushFromTrack(midi.tracks[0]);
+    } else if (source === "all" || source === "merge") {
+      for (const t of midi.tracks) pushFromTrack(t);
+    }
+  } else if (midi.format === 0) {
+    for (const t of midi.tracks) pushFromTrack(t);
+  } else if (midi.format === 2) {
+    // Format2: each track is independent, use track0 for global tempo
+    if (midi.tracks[0]) pushFromTrack(midi.tracks[0]);
+  }
+
+  // Sort by tick first
+  points.sort((a, b) => a.tick - b.tick);
+
+  // Merge same-tick points (later wins)
+  const out: TempoPoint[] = [];
+  for (const p of points) {
+    const last = out[out.length - 1];
+    if (last && last.tick === p.tick) {
+      last.usPerQuarter = p.usPerQuarter;
+    } else {
+      out.push({ ...p });
     }
   }
 
   // Add default tempo at tick 0 if no tempo event exists there
-  if (!hasInitialTempo) {
-    tempoMap.unshift({ tick: 0, usPerQuarter: 500000 });
+  if (out.length === 0 || (out[0] && out[0].tick !== 0)) {
+    out.unshift({ tick: 0, usPerQuarter: 500000 });
   }
 
-  return tempoMap;
+  return out;
 }
 
 export function ticksToMs(
   tick: number,
   tempoMap: TempoPoint[],
+  ppqOrMidi: number | MidiFile,
+): number {
+  if (typeof ppqOrMidi !== "number") {
+    const midi = ppqOrMidi as MidiFile;
+    if (midi.smpte) {
+      const fps = midi.smpte.fps;
+      const tpf = midi.smpte.ticksPerFrame;
+      if (fps <= 0 || tpf <= 0)
+        throw new Error("Invalid SMPTE division parameters");
+      const seconds = tick / (fps * tpf);
+      return seconds * 1000;
+    }
+    if (!midi.ticksPerQuarter) {
+      throw new Error("PPQ not present in MIDI header");
+    }
+    return ticksToMs_PPQ(tick, tempoMap, midi.ticksPerQuarter);
+  } else {
+    return ticksToMs_PPQ(tick, tempoMap, ppqOrMidi);
+  }
+}
+
+function ticksToMs_PPQ(
+  tick: number,
+  tempoMap: TempoPoint[],
   ppq: number,
 ): number {
-  if (tempoMap.length === 0) {
-    throw new Error("Tempo map is empty");
-  }
-
-  if (ppq <= 0) {
-    throw new Error("PPQ must be greater than zero");
-  }
+  if (ppq <= 0) throw new Error("PPQ must be > 0");
+  if (tempoMap.length === 0) throw new Error("Tempo map is empty");
 
   let totalMs = 0;
-  let currentTick = 0;
+  let cursorTick = 0;
 
   for (let i = 0; i < tempoMap.length; i++) {
-    const currentTempoPoint = tempoMap[i];
-    if (!currentTempoPoint) continue;
+    const cur = tempoMap[i];
+    if (!cur) continue;
+    const next = tempoMap[i + 1] ?? null;
 
-    const nextTempoPoint = i < tempoMap.length - 1 ? tempoMap[i + 1] : null;
+    const segStart = Math.max(cursorTick, cur.tick);
+    const segEnd = next ? Math.min(next.tick, tick) : tick;
 
-    // Determine the end of this tempo segment
-    const segmentStartTick = Math.max(currentTick, currentTempoPoint.tick);
-    const segmentEndTick = nextTempoPoint
-      ? Math.min(nextTempoPoint.tick, tick)
-      : tick;
-
-    // If the segment has duration and we haven't reached our target tick yet
-    if (segmentEndTick > segmentStartTick && segmentStartTick < tick) {
-      const ticksInSegment = segmentEndTick - segmentStartTick;
-      const msInSegment =
-        (ticksInSegment * currentTempoPoint.usPerQuarter) / (ppq * 1000);
-      totalMs += msInSegment;
-      currentTick = segmentEndTick;
+    if (segEnd > segStart && segStart < tick) {
+      const ticks = segEnd - segStart;
+      totalMs += (ticks * cur.usPerQuarter) / (ppq * 1000);
+      cursorTick = segEnd;
     }
 
-    if (currentTick >= tick) {
-      break;
-    }
+    if (cursorTick >= tick) break;
   }
 
   return totalMs;

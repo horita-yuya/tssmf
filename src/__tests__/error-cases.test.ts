@@ -505,7 +505,7 @@ describe("Error Handling and Edge Cases", () => {
     });
 
     it("should handle VLQ overflow conditions", () => {
-      // Test maximum possible VLQ value plus one (would overflow if using wrong data types)
+      // Test VLQ that exceeds 4-byte limit - should throw error
       const data = new Uint8Array([
         0x4d,
         0x54,
@@ -529,28 +529,23 @@ describe("Error Handling and Edge Cases", () => {
         0x00,
         0x00,
         0x0c,
-        0x90,
         0x80,
         0x80,
         0x80,
-        0x00, // VLQ that would cause issues if not handled correctly
-        0xff,
-        0x2f,
-        0x00, // End of track
+        0x80,
+        0x80, // 5-byte VLQ - exceeds 4-byte limit
         0x00,
         0xff,
         0x2f,
-        0x00, // Padding
+        0x00, // End of track
       ]);
 
-      // Should handle without throwing or producing invalid results
-      const midi = parseMidi(data);
-      expect(midi.tracks[0].events[0].delta).toBeGreaterThanOrEqual(0);
-      expect(Number.isInteger(midi.tracks[0].events[0].delta)).toBe(true);
+      // Should throw error due to VLQ exceeding 4-byte limit
+      expect(() => parseMidi(data)).toThrow(/VLQ too long/);
     });
 
     it("should handle excessively long VLQ sequences", () => {
-      // Create a VLQ with too many continuation bytes
+      // Create a VLQ with too many continuation bytes (exceeds 4-byte limit)
       const data = new Uint8Array([
         0x4d,
         0x54,
@@ -580,19 +575,14 @@ describe("Error Handling and Edge Cases", () => {
         0x80,
         0x80,
         0x80,
-        0x00, // 7-byte VLQ (valid but excessive)
+        0x00, // 7-byte VLQ (exceeds 4-byte limit)
         0xff,
         0x2f,
         0x00, // End of track
-        0x00,
-        0xff,
-        0x2f,
-        0x00, // Padding
       ]);
 
-      // Should parse without issues (VLQ allows this)
-      const midi = parseMidi(data);
-      expect(midi.tracks[0].events[0].delta).toBe(0);
+      // Should throw error due to VLQ exceeding 4-byte limit
+      expect(() => parseMidi(data)).toThrow(/VLQ too long/);
     });
   });
 

@@ -1,5 +1,5 @@
 {
-  "name": "tidy",
+  "name": "tssmf",
   "version": "1.0.0",
   "description": "Zero-dependency TypeScript library for parsing MIDI files",
   "keywords": [
